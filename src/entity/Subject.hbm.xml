@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+
+    <class name="entity.Subject" table="subject" schema="attendance_management">
+        <id name="id" column="ID"/>
+        <property name="name" column="Name"/>
+        <property name="startDate" column="StartDate"/>
+        <property name="finishDate" column="FinishDate"/>
+        <property name="weekday" column="Weekday"/>
+        <property name="startTime" column="StartTime"/>
+        <property name="finishTime" column="FinishTime"/>
+        <property name="classroom" column="Classroom"/>
+    </class>
+</hibernate-mapping>
