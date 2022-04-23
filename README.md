@@ -1,4 +1,4 @@
-# Attendance Management (by Hibernate)
+# Attendance Management (with Hibernate)
 Java course's project
 ## Environment
 * IDE: IntelliJ IDEA Ultimate (educational license)
