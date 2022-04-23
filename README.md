@@ -28,5 +28,15 @@ Java course's project
 3. To reopen this above window:
    * Go to View - Tool Windows - Persistence
    * Right click `BTHibernate` - Generate Persistence Mapping - By Database Schema
+   
+### MySQL Connector
+1. File - Project Structure - Libraries
+2. Click (+) New Project Library, From Maven...
+3. Search `mysql:mysql-connector-java:5.1.40`
+4. OK - OK - OK
+5. Open **hibernate.cfg.xml**, change `com.mysql.cj.jdbc.Driver` to `com.mysql.jdbc.Driver`
 
-NOTE: I move all ***.hbm.xml** files to `entity` package
+
+### NOTE:
+1. I move all **.hbm.xml** files to `entity` package
+2. Must have property `connection.username` and `connection.password` in **hibernate.cfg.xml**

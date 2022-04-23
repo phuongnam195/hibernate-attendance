@@ -1,17 +1,28 @@
 package admin;
 
-import admin.subject.CreateSubjectUI;
+import admin.student.NewStudentUI;
+import admin.subject.FromCSVFileUI;
+import admin.subject.NewSubjectUI;
+import admin.subject.ViewAttendanceAdminUI;
+import admin.subject.FromAvailableListUI;
+import common.Callable;
+import common.ChangePasswordUI;
+import dao.LearningDAO;
+import dao.StudentDAO;
 import dao.SubjectDAO;
+import entity.Student;
 import entity.Subject;
 import login.LoginUI;
 import util.Constants;
-import util.Setting;
-import util.DateUtils;
+import util.AccountManager;
+import util.DateTimeUtil;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,16 +31,22 @@ public class AdminUI extends JFrame {
     private JButton changePasswordButton;
     private JButton logoutButton;
     private JPanel mainPanel;
-    private JTabbedPane managePanel;
+    private JTabbedPane tabbedPane;
     private JPanel subjectPanel;
-    private JTextField searchBar;
-    private JButton searchButton;
     private JTable subjectTable;
     private JPanel studentPanel;
     private JButton createSubjectButton;
     private JButton importStudentsButton;
     private JButton showAttendanceButton;
     private JButton refreshButton;
+    private JTable studentTable;
+    private JButton refresh2Button;
+    private JButton addStudentButton;
+
+    private List<Subject> subjects;
+    private List<Student> students;
+    private DefaultTableModel subjectTableModel;
+    private DefaultTableModel studentTableModel;
 
     public AdminUI() {
         setTitle(Constants.appName + " (giáo vụ)");
@@ -39,20 +56,20 @@ public class AdminUI extends JFrame {
         setContentPane(mainPanel);
         setVisible(true);
 
-//        usernameLabel.setText("Tên đăng nhập: " + Setting.getCurrentAdmin().getUsername());
-
-        logoutButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onLogout();
-            }
-        });
-
+        setupInfoBar();
         setupSubjectTab();
+        setupStudentTab();
+    }
+
+    private void setupInfoBar() {
+        usernameLabel.setText("Tên đăng nhập: " + AccountManager.getCurrentAdmin().getUsername());
+
+        changePasswordButton.addActionListener(e -> new ChangePasswordUI());
+        logoutButton.addActionListener(e -> onLogout());
     }
 
     private void onLogout() {
-        Setting.logout();
+        AccountManager.logout();
         this.setVisible(false);
         new LoginUI();
         this.dispose();
@@ -66,37 +83,142 @@ public class AdminUI extends JFrame {
 
         subjectTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        refreshButton.addActionListener(new ActionListener() {
+        setupSubjectTabButtons();
+    }
+
+    private void setupStudentTab() {
+        fetchStudentTableData();
+        studentTable.setBounds(30, 40, 200, 300);
+        studentTable.setAutoCreateRowSorter(true);
+        studentTable.setDefaultEditor(Object.class, null);  // disable edit cell
+
+        setupStudentTabButtons();
+    }
+
+    private void setupSubjectTabButtons() {
+        refreshButton.addActionListener(e -> fetchSubjectTableData());
+
+        createSubjectButton.addActionListener(e -> new NewSubjectUI(AdminUI.this));
+
+        importStudentsButton.addMouseListener(new MouseAdapter() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                fetchSubjectTableData();
+            public void mousePressed(MouseEvent e) {
+                JPopupMenu importStdMenu = new JPopupMenu();
+
+                importStdMenu.add(new JMenuItem(new AbstractAction("Từ file CSV") {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        new FromCSVFileUI();
+                    }
+                }));
+                if (subjectTable.getSelectedRow() != -1) {
+                    importStdMenu.add(new JMenuItem(new AbstractAction("Từ danh sách sẵn") {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            Subject selectedSubject = getSelectedSubject();
+                            if (selectedSubject != null) {
+                                new FromAvailableListUI(selectedSubject);
+                            }
+                        }
+                    }), 0);
+                    importStdMenu.add(new JMenuItem(new AbstractAction("Sinh viên mới") {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            new NewStudentUI(new AddStudentToSubject());
+                        }
+                    }), 1);
+                }
+                importStdMenu.show(e.getComponent(), e.getX(), e.getY());
             }
         });
 
-        createSubjectButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                new CreateSubjectUI(AdminUI.this);
+        showAttendanceButton.addActionListener(e -> {
+            Subject selectedSubject = getSelectedSubject();
+            if (selectedSubject != null) {
+                new ViewAttendanceAdminUI(selectedSubject);
             }
         });
+    }
 
-        showAttendanceButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                System.out.println(subjectTable.getSelectedRow());
-            }
-        } );
+    private void setupStudentTabButtons() {
+        refresh2Button.addActionListener(e -> fetchStudentTableData());
+
+        addStudentButton.addActionListener(e -> {
+            new NewStudentUI(new RefreshAfterAdded());
+        });
     }
 
     public void fetchSubjectTableData() {
-        String[] columnNames = {"Mã môn học", "Tên môn học", "Ngày bắt đầu", "Ngày kết thúc", "Thứ", "Giờ bắt đầu", "Giờ kết thúc", "Phòng học"};
+        String[] columnNames = {"Mã MH", "Tên môn học", "Ngày bắt đầu", "Ngày kết thúc", "Thứ", "Giờ bắt đầu", "Giờ kết thúc", "Phòng học"};
         List<String[]> strSubjects = new ArrayList<>();
-        List<Subject> subjects = SubjectDAO.getListSubject();
+        subjects = SubjectDAO.getListSubject();
         for (Subject sj : subjects) {
-            String[] row = {sj.getId(), sj.getName(), DateUtils.formatDate(sj.getStartDate()), DateUtils.formatDate(sj.getFinishDate()), DateUtils.formatWeekday(sj.getWeekday()), DateUtils.formatTime(sj.getStartTime()), DateUtils.formatTime(sj.getFinishTime()), sj.getClassroom()};
+            String[] row = {sj.getId(), sj.getName(), DateTimeUtil.formatDate(sj.getStartDate()), DateTimeUtil.formatDate(sj.getFinishDate()), DateTimeUtil.formatWeekday(sj.getWeekday()), DateTimeUtil.formatTime(sj.getStartTime()), DateTimeUtil.formatTime(sj.getFinishTime()), sj.getClassroom()};
             strSubjects.add(row);
         }
         String[][] data = strSubjects.toArray(new String[0][]);
-        DefaultTableModel subjectTableModel = new DefaultTableModel(data, columnNames);
+        subjectTableModel = new DefaultTableModel(data, columnNames);
         subjectTable.setModel(subjectTableModel);
+        subjectTable.getColumnModel().getColumn(0).setPreferredWidth(65);
+        subjectTable.getColumnModel().getColumn(1).setPreferredWidth(150);
+        subjectTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+        subjectTable.getColumnModel().getColumn(3).setPreferredWidth(120);
+        subjectTable.getColumnModel().getColumn(4).setPreferredWidth(50);
+    }
+
+    public void fetchStudentTableData() {
+        String[] columnNames = {"Mã sinh viên", "Tên sinh viên"};
+        List<String[]> strStudents = new ArrayList<>();
+        students = StudentDAO.getListStudent();
+        for (Student st : students) {
+            String[] row = { st.getId(), st.getName() };
+            strStudents.add(row);
+        }
+        String[][] data = strStudents.toArray(new String[0][]);
+        studentTableModel = new DefaultTableModel(data, columnNames);
+        studentTable.setModel(studentTableModel);
+        studentTable.getColumnModel().getColumn(0).setPreferredWidth(100);
+        studentTable.getColumnModel().getColumn(1).setPreferredWidth(100);
+        DefaultTableCellRenderer render = new DefaultTableCellRenderer();
+        render.setHorizontalAlignment(JLabel.CENTER);
+        studentTable.getColumnModel().getColumn(0).setCellRenderer(render);
+        studentTable.getColumnModel().getColumn(1).setCellRenderer(render);
+    }
+
+    public class AddStudentToSubject implements Callable {
+        public void call(Object... args) {
+            fetchStudentTableData();
+
+            String studentId = (String) args[0];
+            boolean ok = LearningDAO.enrollSubject(studentId, getSelectedSubjectId());
+            if (!ok) {
+                JOptionPane.showMessageDialog(new JFrame(), "Lỗi không xác định", "Thêm sinh viên thất bại", JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
+    public class RefreshAfterAdded implements Callable {
+        public void call(Object... args) {
+            fetchStudentTableData();
+        }
+    }
+
+    private String getSelectedSubjectId() {
+        int selectedRow = subjectTable.getSelectedRow();
+        if (selectedRow == -1) return null;
+        String subjectId = (String) subjectTableModel.getValueAt(selectedRow, 0);
+        return subjectId;
+    }
+
+    private Subject getSelectedSubject() {
+        int selectedRow = subjectTable.getSelectedRow();
+        if (selectedRow == -1) return null;
+        String subjectId = (String) subjectTableModel.getValueAt(selectedRow, 0);
+        for (Subject sb : subjects) {
+            if (sb.getId().equals(subjectId)) {
+                return sb;
+            }
+        }
+        return null;
     }
 }

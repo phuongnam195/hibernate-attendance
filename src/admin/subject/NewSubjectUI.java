@@ -4,16 +4,17 @@ import admin.AdminUI;
 import dao.SubjectDAO;
 import entity.Subject;
 import popup.DatePicker;
-import util.DateUtils;
+import util.DateTimeUtil;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Time;
-import java.util.Date;
+import java.sql.Date;
 
-public class CreateSubjectUI extends JFrame {
+import util.Constants;
+
+public class NewSubjectUI extends JFrame {
 
     private JPanel mainPanel;
     private JTextField idField;
@@ -39,9 +40,8 @@ public class CreateSubjectUI extends JFrame {
     private AdminUI parent;
 
     private static long ONE_DAY_MS = 24 * 60 * 60 * 1000;
-    private static Insets FIELD_MARGIN = new Insets(5, 5 ,5, 5);
 
-    public CreateSubjectUI(AdminUI parent) {
+    public NewSubjectUI(AdminUI parent) {
         this.parent = parent;
         setTitle("Tạo môn học");
         setSize(540, 720);
@@ -58,9 +58,9 @@ public class CreateSubjectUI extends JFrame {
     }
 
     private void setupStringFields() {
-        idField.setMargin(FIELD_MARGIN);
-        nameField.setMargin(FIELD_MARGIN);
-        classroomField.setMargin(FIELD_MARGIN);
+        idField.setMargin(Constants.fieldMargin);
+        nameField.setMargin(Constants.fieldMargin);
+        classroomField.setMargin(Constants.fieldMargin);
     }
 
     private void setupDateFields() {
@@ -70,19 +70,22 @@ public class CreateSubjectUI extends JFrame {
         startDateButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Date pickedDate = new DatePicker(CreateSubjectUI.this).setPickedDate();
-                startDateField.setText(DateUtils.formatDate(pickedDate));
-                java.sql.Date sqlDate = DateUtils.utilDateToSqlDate(pickedDate);
+                Date pickedDate = new DatePicker(NewSubjectUI.this).setPickedDate();
+                if (pickedDate == null) {
+                    return;
+                }
+                startDateField.setText(DateTimeUtil.formatDate(pickedDate));
+                java.sql.Date sqlDate = DateTimeUtil.utilDateToSqlDate(pickedDate);
                 subjectModel.setStartDate(sqlDate);
 
                 long ms = sqlDate.getTime() + ONE_DAY_MS * 7 * 15;
                 java.sql.Date fifteenWeeksLater = new java.sql.Date(ms);
-                finishDateField.setText(DateUtils.formatDate(fifteenWeeksLater));
+                finishDateField.setText(DateTimeUtil.formatDate(fifteenWeeksLater));
                 subjectModel.setFinishDate(fifteenWeeksLater);
 
-                int weekday = DateUtils.getWeekDay(pickedDate);
+                int weekday = DateTimeUtil.getWeekDay(pickedDate);
                 subjectModel.setWeekday(weekday);
-                weekdayField.setText(DateUtils.formatWeekday(weekday));
+                weekdayField.setText(DateTimeUtil.formatWeekday(weekday));
             }
         });
 
@@ -90,19 +93,22 @@ public class CreateSubjectUI extends JFrame {
         finishDateButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Date pickedDate = new DatePicker(CreateSubjectUI.this).setPickedDate();
-                finishDateField.setText(DateUtils.formatDate(pickedDate));
-                java.sql.Date sqlDate = DateUtils.utilDateToSqlDate(pickedDate);
+                Date pickedDate = new DatePicker(NewSubjectUI.this).setPickedDate();
+                if (pickedDate == null) {
+                    return;
+                }
+                finishDateField.setText(DateTimeUtil.formatDate(pickedDate));
+                java.sql.Date sqlDate = DateTimeUtil.utilDateToSqlDate(pickedDate);
                 subjectModel.setFinishDate(sqlDate);
 
                 long ms = sqlDate.getTime() - ONE_DAY_MS * 7 * 15;
                 java.sql.Date fifteenWeeksAgo = new java.sql.Date(ms);
-                startDateField.setText(DateUtils.formatDate(fifteenWeeksAgo));
+                startDateField.setText(DateTimeUtil.formatDate(fifteenWeeksAgo));
                 subjectModel.setStartDate(fifteenWeeksAgo);
 
-                int weekday = DateUtils.getWeekDay(pickedDate);
+                int weekday = DateTimeUtil.getWeekDay(pickedDate);
                 subjectModel.setWeekday(weekday);
-                weekdayField.setText(DateUtils.formatWeekday(weekday));
+                weekdayField.setText(DateTimeUtil.formatWeekday(weekday));
             }
         });
     }
@@ -123,18 +129,29 @@ public class CreateSubjectUI extends JFrame {
         saveButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                subjectModel.setId(idField.getText());
-                subjectModel.setName(nameField.getText());
-                subjectModel.setStartTime(new Time(startHourModel.getNumber().intValue(), startMinuteModel.getNumber().intValue(), 0));
-                subjectModel.setFinishTime(new Time(finishHourModel.getNumber().intValue(), finishMinuteModel.getNumber().intValue(), 0));
-                subjectModel.setClassroom(classroomField.getText());
+                try {
+                    if (idField.getText().isEmpty()) throw new Exception("Không được để ID trống!");
+                    if (nameField.getText().isEmpty()) throw new Exception("Không được để tên trống!");
+                    if (subjectModel.getStartDate() == null) throw new Exception("Không được để ngày bắt đầu trống!");
+                    if (subjectModel.getFinishDate() == null) throw new Exception("Không được để ngày kết thúc trống!");
+                    if (classroomField.getText().isEmpty()) throw new Exception("Không được để phòng học trống!");
 
-                boolean ok = SubjectDAO.addNewSubject(subjectModel);
-                // TODO: báo exception trùng id,...
-                if (ok) {
-                    CreateSubjectUI.this.setVisible(false);
-                    CreateSubjectUI.this.dispose();
-                    parent.fetchSubjectTableData();
+                    subjectModel.setId(idField.getText());
+                    subjectModel.setName(nameField.getText());
+                    subjectModel.setStartTime(new Time(startHourModel.getNumber().intValue(), startMinuteModel.getNumber().intValue(), 0));
+                    subjectModel.setFinishTime(new Time(finishHourModel.getNumber().intValue(), finishMinuteModel.getNumber().intValue(), 0));
+                    subjectModel.setClassroom(classroomField.getText());
+
+                    boolean ok = SubjectDAO.addNewSubject(subjectModel);
+                    if (ok) {
+                        NewSubjectUI.this.setVisible(false);
+                        NewSubjectUI.this.dispose();
+                        parent.fetchSubjectTableData();
+                    } else {
+                        throw new Exception("Trùng ID môn học!");
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(new JFrame(), ex.getMessage(), "Tạo môn thất bại", JOptionPane.WARNING_MESSAGE);
                 }
             }
         });

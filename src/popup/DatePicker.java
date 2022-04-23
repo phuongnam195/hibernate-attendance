@@ -6,7 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Date;
+import java.sql.Date;
 
 public class DatePicker {
     int month = java.util.Calendar.getInstance().get(java.util.Calendar.MONTH);
@@ -90,6 +90,6 @@ public class DatePicker {
 //                "dd-MM-yyyy");
         java.util.Calendar cal = java.util.Calendar.getInstance();
         cal.set(year, month, Integer.parseInt(day));
-        return cal.getTime();
+        return new Date(cal.getTimeInMillis());
     }
 }

@@ -7,8 +7,9 @@ import login.result.FirstLogin;
 import login.result.LoginFailed;
 import login.result.LoginResult;
 import login.result.LoginSuccess;
+import student.StudentUI;
 import util.Constants;
-import util.Setting;
+import util.AccountManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -52,7 +53,7 @@ public class LoginUI extends JFrame {
         LoginResult result = AdminDAO.checkLogin(username, password);
         if (result instanceof LoginSuccess) {
             LoginSuccess success = (LoginSuccess) result;
-            Setting.loginAsAdmin(success.getAdmin());
+            AccountManager.loginAsAdmin(success.getAdmin());
             this.setVisible(false);
             new AdminUI();
             this.dispose();
@@ -73,14 +74,19 @@ public class LoginUI extends JFrame {
         LoginResult result = StudentDAO.checkLogin(username, password);
         if (result instanceof LoginSuccess) {
             LoginSuccess success = (LoginSuccess) result;
-            Setting.loginAsStudent(success.getStudent());
+            AccountManager.loginAsStudent(success.getStudent());
+            this.setVisible(false);
+            new StudentUI();
+            this.dispose();
         } else if (result instanceof LoginFailed) {
             LoginFailed failed = (LoginFailed) result;
             JLabel message = new JLabel(failed.getString());
             message.setFont(Constants.appFont);
             JOptionPane.showMessageDialog(new JFrame(), message, "Đăng nhập thất bại", JOptionPane.WARNING_MESSAGE);
         } else if (result instanceof FirstLogin) {
-
+            FirstLogin success = (FirstLogin) result;
+            AccountManager.loginAsStudent(success.getStudent());
+            new ChangeInitPasswordUI();
         }
     }
 

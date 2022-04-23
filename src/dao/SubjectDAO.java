@@ -11,6 +11,23 @@ import java.util.List;
 
 public class SubjectDAO {
 
+    public static Subject getById(String subjectId) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
+            String hql = "select sj " +
+                    "from Subject sj " +
+                    "where sj.id = '" + subjectId + "'";
+            Query query = session.createQuery(hql);
+            if (query.list().isEmpty()) return null;
+            return (Subject) query.list().get(0);
+        } catch (Exception e) {
+            Logger.e("SubjectDAO -> getListSubject()", e);
+        } finally {
+            session.close();
+        }
+        return null;
+    }
+
     public static List<Subject> getListSubject() {
         List<Subject> list = null;
         Session session = HibernateUtil.getSessionFactory().openSession();

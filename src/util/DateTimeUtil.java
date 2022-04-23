@@ -5,10 +5,12 @@ import javax.swing.text.DefaultFormatterFactory;
 import java.sql.Time;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Calendar;
-import java.util.Date;
+import java.sql.Date;
 
-public class DateUtils {
+public class DateTimeUtil {
     public static String formatDate(Date date) {
         SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
         return formatter.format(date);
@@ -41,5 +43,18 @@ public class DateUtils {
         c.setTime(date);
         int weekday = c.get(Calendar.DAY_OF_WEEK);
         return weekday;
+    }
+
+    public static Date currentDate() {
+        return Date.valueOf(LocalDate.now());
+    }
+
+    public static Time currentTime() {
+        return Time.valueOf(LocalTime.now());
+    }
+
+    public static int daysDiff(Date from, Date to) {
+        long timeDiff = to.getTime() - from.getTime();
+        return (int) (timeDiff / (1000 * 60 * 60* 24));
     }
 }

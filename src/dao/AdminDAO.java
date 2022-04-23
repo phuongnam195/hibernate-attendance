@@ -4,10 +4,13 @@ import entity.Admin;
 import login.result.LoginFailed;
 import login.result.LoginResult;
 import login.result.LoginSuccess;
+import org.hibernate.HibernateException;
 import org.hibernate.Query;
 import org.hibernate.Session;
+import org.hibernate.Transaction;
 import util.HashUtil;
 import util.HibernateUtil;
+import util.Logger;
 
 import java.util.Arrays;
 
@@ -31,5 +34,20 @@ public class AdminDAO {
                 return new LoginFailed(LoginFailed.WRONG_PASSWORD);
             }
         }
+    }
+
+    public static boolean update(Admin admin) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        Transaction transaction = session.beginTransaction();
+        try {
+            session.update(admin);
+            transaction.commit();
+            return true;
+        } catch (HibernateException e) {
+            Logger.e("AdminDAO -> update()", e);
+        } finally {
+            session.close();
+        }
+        return false;
     }
 }
